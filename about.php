@@ -9,7 +9,7 @@ require_once 'includes/header.php';
 
     <div class="row">
         <div class="col-md-8 mx-auto">
-            <p>UE Lost and Found | University of the East is a dedicated Lost and Found Management System designed to help students, faculty, and staff at Northern University of Business and Technology Khulna easily report and retrieve lost or found items. Our goal is to create a centralized, efficient, and user-friendly platform that minimizes the stress and inconvenience associated with losing personal belongings.</p>
+            <p>UE Lost and Found | University of the East is a dedicated Lost and Found Management System designed to help students, faculty, and staff at Northern University of the East easily report and retrieve lost or found items. Our goal is to create a centralized, efficient, and user-friendly platform that minimizes the stress and inconvenience associated with losing personal belongings.</p>
             <p>We understand how frustrating it can be to lose something important, or how rewarding it is to return a found item to its rightful owner. That's why we've built UE Lost and Found | University of the East with features like:</p>
             <ul>
                 <li>Easy reporting for both lost and found items.</li>
