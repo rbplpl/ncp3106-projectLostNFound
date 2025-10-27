@@ -5,7 +5,7 @@
     $item_stats = getItemStats();
     ?>
     <!-- Footer -->
-    <footer class="footer-simple">© 2025 University of the East. All rights reserved.</footer>
+    <footer class="footer-simple" align="center">© 2025 University of the East. All rights reserved.</footer>
 
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
