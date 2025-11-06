@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Lost Item Details';
+$pageTitle = 'Found Item Details';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
 
@@ -17,12 +17,12 @@ if ($conn->connect_error) {
     die('Connection failed: ' . $conn->connect_error);
 }
 
-$sql = "SELECT l.*, c.name as category_name, u.full_name, u.email, u.phone, u.department, d.name as department_name 
-        FROM lost_items l 
-        JOIN categories c ON l.category_id = c.id 
-        JOIN users u ON l.user_id = u.id 
+$sql = "SELECT f.*, c.name as category_name, u.full_name, u.email, u.phone, u.department, d.name as department_name 
+        FROM found_items f 
+        JOIN categories c ON f.category_id = c.id 
+        JOIN users u ON f.user_id = u.id 
         JOIN departments d ON u.department = d.id 
-        WHERE l.id = ?";
+        WHERE f.id = ?";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $itemId);
@@ -44,25 +44,25 @@ if ($item['status'] === 'active') {
 
 // Handle match confirmation
 if (isset($_POST['confirm_match']) && isLoggedIn()) {
-    $foundItemId = (int)$_POST['found_item_id'];
+    $lostItemId = (int)$_POST['lost_item_id'];
     
     // Create match
-    $matchCreated = createMatch($itemId, $foundItemId);
+    $matchCreated = createMatch($lostItemId, $itemId);
     
     if ($matchCreated) {
         // Update status of both items
-        $updateSql = "UPDATE lost_items SET status = 'pending_match' WHERE id = ?";
+        $updateLostSql = "UPDATE lost_items SET status = 'pending_match' WHERE id = ?";
+        $updateLostStmt = $conn->prepare($updateLostSql);
+        $updateLostStmt->bind_param('i', $lostItemId);
+        $updateLostStmt->execute();
+        
+        $updateSql = "UPDATE found_items SET status = 'pending_match' WHERE id = ?";
         $updateStmt = $conn->prepare($updateSql);
         $updateStmt->bind_param('i', $itemId);
         $updateStmt->execute();
         
-        $updateFoundSql = "UPDATE found_items SET status = 'pending_match' WHERE id = ?";
-        $updateFoundStmt = $conn->prepare($updateFoundSql);
-        $updateFoundStmt->bind_param('i', $foundItemId);
-        $updateFoundStmt->execute();
-        
         // Redirect to prevent form resubmission
-        header('Location: lost_item.php?id=' . $itemId . '&matched=1');
+        header('Location: found_item.php?id=' . $itemId . '&matched=1');
         exit;
     }
 }
@@ -72,7 +72,7 @@ $isOwner = isLoggedIn() && getCurrentUser()['id'] === $item['user_id'];
 
 // Handle item deletion
 if (isset($_POST['delete_item']) && $isOwner) {
-    $deleteSql = "DELETE FROM lost_items WHERE id = ? AND user_id = ?";
+    $deleteSql = "DELETE FROM found_items WHERE id = ? AND user_id = ?";
     $deleteStmt = $conn->prepare($deleteSql);
     $deleteStmt->bind_param('ii', $itemId, getCurrentUser()['id']);
     $deleteStmt->execute();
@@ -104,7 +104,7 @@ include 'includes/header.php';
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-                    <li class="breadcrumb-item"><a href="search.php?type=lost">Lost Items</a></li>
+                    <li class="breadcrumb-item"><a href="search.php?type=found">Found Items</a></li>
                     <li class="breadcrumb-item active" aria-current="page"><?php echo htmlspecialchars($item['title']); ?></li>
                 </ol>
             </nav>
@@ -112,7 +112,7 @@ include 'includes/header.php';
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h4 class="card-title mb-0"><?php echo htmlspecialchars($item['title']); ?></h4>
-                    <span class="badge badge-lost">Lost</span>
+                    <span class="badge badge-found">Found</span>
                 </div>
                 
                 <div class="card-body">
@@ -135,9 +135,9 @@ include 'includes/header.php';
                                     <?php echo htmlspecialchars($item['category_name']); ?>
                                 </li>
                                 <li class="mb-2">
-                                    <strong><i class="fas fa-calendar-alt me-2"></i>Date Lost:</strong> 
-                                    <?php echo formatDate($item['date_lost']); ?>
-                                    <small class="text-muted">(<?php echo timeElapsed($item['date_lost']); ?>)</small>
+                                    <strong><i class="fas fa-calendar-alt me-2"></i>Date Found:</strong> 
+                                    <?php echo formatDate($item['date_found']); ?>
+                                    <small class="text-muted">(<?php echo timeElapsed($item['date_found']); ?>)</small>
                                 </li>
                                 <li class="mb-2">
                                     <strong><i class="fas fa-map-marker-alt me-2"></i>Location:</strong> 
@@ -172,9 +172,9 @@ include 'includes/header.php';
                     
                     <?php if ($isOwner): ?>
                         <div class="mt-4 d-flex">
-                            <!-- <a href="edit_lost.php?id=<?php echo $item['id']; ?>" class="btn btn-outline-primary me-2">
+                            <a href="edit_found.php?id=<?php echo $item['id']; ?>" class="btn btn-outline-primary me-2">
                                 <i class="fas fa-edit me-1"></i> Edit
-                            </a> -->
+                            </a>
                             <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                 <i class="fas fa-trash-alt me-1"></i> Delete
                             </button>
@@ -198,18 +198,20 @@ include 'includes/header.php';
                                         <div class="card-body">
                                             <h6 class="card-title"><?php echo htmlspecialchars($match['title']); ?></h6>
                                             <p class="card-text small">
-                                                <i class="fas fa-calendar-alt me-1"></i> Found on: <?php echo formatDate($match['date_found']); ?><br>
+                                                <i class="fas fa-calendar-alt me-1"></i> Lost on: <?php echo formatDate($match['date_lost']); ?><br>
                                                 <i class="fas fa-map-marker-alt me-1"></i> <?php echo htmlspecialchars($match['location']); ?>
                                             </p>
-                                            <?php if (isLoggedIn()): ?>
+                                            <?php if (isLoggedIn() && $match['user_id'] === getCurrentUser()['id']): ?>
                                                 <form method="post" action="">
-                                                    <input type="hidden" name="found_item_id" value="<?php echo $match['id']; ?>">
+                                                    <input type="hidden" name="lost_item_id" value="<?php echo $match['id']; ?>">
                                                     <button type="submit" name="confirm_match" class="btn btn-sm btn-success w-100">
                                                         <i class="fas fa-check-circle me-1"></i> This is my item
                                                     </button>
                                                 </form>
+                                            <?php elseif (isLoggedIn()): ?>
+                                                <a href="lost_item.php?id=<?php echo $match['id']; ?>" class="btn btn-sm btn-outline-primary w-100">View Details</a>
                                             <?php else: ?>
-                                                <a href="login.php" class="btn btn-sm btn-outline-primary w-100">Login to claim</a>
+                                                <a href="login.php" class="btn btn-sm btn-outline-primary w-100">Login to view</a>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -261,7 +263,7 @@ include 'includes/header.php';
                         </ul>
                         
                         <div class="mt-4">
-                            <a href="contact_finder.php?item_id=<?php echo $item['id']; ?>&type=lost" class="btn btn-primary w-100">
+                            <a href="contact_finder.php?item_id=<?php echo $item['id']; ?>&type=found" class="btn btn-primary w-100">
                                 <i class="fas fa-paper-plane me-2"></i>Contact with Message
                             </a>
                         </div>
@@ -271,6 +273,30 @@ include 'includes/header.php';
                             Please <a href="login.php">login</a> to view contact information and send messages to the person who reported this item.
                         </div>
                     <?php endif; ?>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-share-alt me-2"></i>Share This Item
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-around">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="btn btn-outline-primary">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="https://twitter.com/intent/tweet?url=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode('Found item: ' . $item['title']); ?>" target="_blank" class="btn btn-outline-info">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="https://api.whatsapp.com/send?text=<?php echo urlencode('Found item: ' . $item['title'] . ' - ' . 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="btn btn-outline-success">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="copyToClipboard()">
+                            <i class="fas fa-link"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -287,7 +313,7 @@ include 'includes/header.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete this lost item report? This action cannot be undone.
+                Are you sure you want to delete this found item report? This action cannot be undone.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
